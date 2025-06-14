@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Widget de Reviews Simplificado</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+    --rosa:#D9AAB7;
+    --texto:#212529;
+    --texto-sec:#6c757d;
+    --bg:#f8f9fa;
+    --bg-card:#fff;
+    --estrela:#FFC107;
+    --r-card:24px;
+    --r-thumb:12px;
+    --sombr:0 10px 30px rgba(0,0,0,.08);
+    --slides:3;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+    font-family:Poppins,sans-serif;background:var(--bg);color:var(--texto);
+    padding:40px 0;-webkit-font-smoothing:antialiased;
+}
+body.modal-open{overflow:hidden}
+
+/* -------- SEÇÃO -------- */
+.review-section{max-width:1200px;width:90%;margin:auto;text-align:center}
+.review-section h2{font-size:clamp(1.8rem,5vw,2.5rem);font-weight:700;margin-bottom:10px}
+.review-section h2 span{color:var(--rosa)}
+.subtitle{font-size:clamp(1rem,3vw,1.1rem);color:var(--texto-sec);margin:0 auto 50px;max-width:500px}
+
+/* -------- CARROSSEL -------- */
+.review-carousel-container{position:relative;padding:0 20px}
+.review-carousel-viewport{overflow:hidden;cursor:grab}
+.review-carousel-viewport.grabbing{cursor:grabbing}
+.review-carousel-track{display:flex;user-select:none}
+.review-card{
+    background:var(--bg-card);border-radius:var(--r-card);padding:24px;
+    flex-shrink:0;width:100%;text-align:left;display:flex;flex-direction:column;
+    margin:0 10px;box-shadow:var(--sombr)
+}
+.review-card h3{font-size:1.5rem;font-weight:700;margin-bottom:5px}
+.rating{font-size:1.2rem;color:var(--estrela);letter-spacing:2px;margin-bottom:15px}
+
+/* Limitar descrição a 3 linhas e esconder overflow */
+.review-description{
+    font-size:.95rem;line-height:1.6;color:var(--texto-sec);margin-bottom:25px;flex-grow:1;
+    display:-webkit-box;
+    -webkit-line-clamp:3;
+    -webkit-box-orient:vertical;
+    overflow:hidden;
+    position:relative;
+    min-height:4.8em;
+}
+
+/* "Leia mais" estilizado como botão de texto */
+.leia-mais{
+    display:inline-block;
+    color:var(--rosa);
+    font-weight:600;
+    background:none;
+    border:none;
+    cursor:pointer;
+    font-size:1em;
+    padding:0;
+    margin-top:6px;
+    text-decoration:underline;
+}
+
+/* --- IMAGEM DO REVIEW --- */
+.review-image-container{width:100%;aspect-ratio:4/3;border-radius:var(--r-thumb);overflow:hidden;margin-top:auto;cursor:pointer;transition:transform .3s}
+.review-image-container:hover{transform:scale(1.03)}
+.review-image-container img{width:100%;height:100%;object-fit:cover}
+
+/* --- BOTÕES --- */
+.carousel-btn{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #eee;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.08);transition:.2s;z-index:10}
+.carousel-btn:hover{transform:translateY(-50%) scale(1.1)}
+.carousel-btn svg{stroke:var(--rosa);stroke-width:2.5}
+.prev-btn{left:-5px}.next-btn{right:-5px}
+
+/* --- MODAL --- */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:.3s;z-index:1000}
+body.modal-open .modal-overlay{opacity:1;visibility:visible}
+.modal-content{
+    background:#fff;border-radius:var(--r-card);padding:20px;gap:20px;max-width:90vw;max-height:90vh;width:1200px;
+    display:flex;position:relative;transform:scale(.95);transition:transform .3s;
+    box-shadow:var(--sombr);
+}
+body.modal-open .modal-content{transform:scale(1)}
+.modal-image-container{flex:2;display:flex;align-items:center;justify-content:center;background:var(--bg);border-radius:var(--r-thumb);}
+.modal-image-container img{max-width:100%;max-height:85vh;object-fit:contain;border-radius:var(--r-thumb)}
+.modal-review-info{
+    flex:1;overflow-y:auto;display:flex;flex-direction:column;padding-right:15px;
+    font-size:1.2em; /* texto maior */
+    line-height:1.7;
+    color:var(--texto-sec);
+    max-height:80vh;
+}
+.modal-close{position:absolute;top:10px;right:10px;background:none;border:none;width:30px;height:30px;cursor:pointer}
+.modal-close svg{stroke:var(--texto-sec);stroke-width:3}
+.modal-btn{display:none}
+
+/* Modal: título e estrelas */
+.modal-review-info h3{font-size:1.5em;font-weight:700;margin-bottom:8px;color:var(--texto)}
+.modal-review-info .rating{font-size:1.2em;color:var(--estrela);margin-bottom:16px;letter-spacing:2px;}
+.modal-review-info .review-description{
+    margin-bottom:0;
+    color:var(--texto-sec);
+    display:block;
+    -webkit-line-clamp:unset;
+    overflow:visible;
+    min-height:unset;
+}
+
+/* --- RESPONSIVO --- */
+@media(max-width:1024px){:root{--slides:2}}
+@media(max-width:768px){
+  :root{--slides:1}
+  .review-carousel-container{padding:0}
+  .carousel-btn{display:none}
+  .modal-content{flex-direction:column;max-width:95vw;max-height:95vh;padding:8px;}
+  .modal-image-container{min-height:180px;}
+  .modal-review-info{font-size:1.05em;max-height:unset;padding-right:0}
+}
+
+/* Melhor leitura no celular */
+@media(max-width:480px){
+  .modal-review-info{font-size:1em;}
+  .modal-content{padding:4px;}
+}
+</style>
+</head>
+<body>
+<section class="review-section">
+  <h2>O que nossas clientes <span>dizem</span></h2>
+  <p class="subtitle">A transformação que você sente e todo mundo vê!</p>
+  <div class="review-carousel-container">
+    <div class="review-carousel-viewport">
+      <div class="review-carousel-track">
+        <!-- === Review 1 === -->
+        <div class="review-card">
+          <h3>Amanda&nbsp;R.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Desde o primeiro momento em que coloquei o aplique me senti outra pessoa.<br>
+            O volume e o brilho são simplesmente incríveis.<br>
+            Foi super fácil de colocar sozinha.<br>
+            Ninguém percebeu que era aplique, só recebi elogios.<br>
+            Usei o dia inteiro e continuou confortável.<br>
+            Mesmo depois de lavar, a maciez se manteve.<br>
+            Chegou rápido e muito bem embalado.<br>
+            A cor combinou direitinho com meu tom natural.<br>
+            Já recomendei para todas as amigas.<br>
+            Com certeza comprarei de novo!
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/D9AAB7/fff?text=Amanda" alt="Foto da Amanda">
+          </div>
+        </div>
+        <!-- === Review 2 === -->
+        <div class="review-card">
+          <h3>Bianca&nbsp;S.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Achei que seria complicado, mas foi a melhor compra que fiz este ano.<br>
+            O caimento é tão natural que até meu cabeleireiro ficou impressionado.<br>
+            Passei o dia inteiro em um evento e ninguém notou que era aplique.<br>
+            Gostei da resistência das fibras, mesmo após modelar com babyliss.<br>
+            O atendimento no WhatsApp foi rápido e tirou todas as minhas dúvidas.<br>
+            Chegou bem antes do prazo estimado.<br>
+            A embalagem veio cheirosa e com instruções claras.<br>
+            Combinei com um coque baixo e ficou perfeito.<br>
+            Minha irmã já pediu emprestado para um casamento.<br>
+            Recomendo demais!
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/CDEAC0/2C2C2C?text=Bianca" alt="Foto da Bianca">
+          </div>
+        </div>
+        <!-- === Review 3 === -->
+        <div class="review-card">
+          <h3>Carla&nbsp;T.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Uso diariamente para trabalhar e não pesa nada.<br>
+            Minha colega já comprou depois de ver o resultado.<br>
+            Não embaraça fácil, o que ajuda muito na correria.<br>
+            O brilho é natural, parece meu cabelo hidratado.<br>
+            Adorei poder colocar e tirar quando quiser.<br>
+            Vale cada centavo pela qualidade.<br>
+            Cortei uns dedinhos e ainda ficou ótimo.<br>
+            Não esquenta na nuca como outros apliques.<br>
+            Já experimentei outras marcas, mas essa ganhou.<br>
+            Cliente fiel a partir de agora!
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/BDE0FE/fff?text=Carla" alt="Foto da Carla">
+          </div>
+        </div>
+        <!-- === Review 4 === -->
+        <div class="review-card">
+          <h3>Daniela&nbsp;M.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            A textura lembra cabelo recém-saído do salão.<br>
+            Fiz várias selfies e ficou perfeito em todas.<br>
+            Me surpreendeu a facilidade de pentear.<br>
+            Não soltou fios mesmo depois de escovar.<br>
+            Veio com um cheirinho suave delicioso.<br>
+            As pontas são cheias, não ficam ralas.<br>
+            Minha autoestima agradece cada centavo.<br>
+            Chegou direitinho aqui no interior de MG.<br>
+            Atendimento impecável do começo ao fim.<br>
+            Nota mil!
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F7D1BA/2C2C2C?text=Daniela" alt="Foto da Daniela">
+          </div>
+        </div>
+        <!-- === Review 5 === -->
+        <div class="review-card">
+          <h3>Elisa&nbsp;K.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Comprei para o meu casamento civil e foi sucesso.<br>
+            Todo mundo perguntou onde eu tinha feito alongamento.<br>
+            Prende bem, não escorrega durante o dia.<br>
+            Consegui tonalizar de leve para igualar as mechas.<br>
+            Fiz penteado semi-preso e ficou impecável.<br>
+            Chegou em 2 dias úteis aqui em SP.<br>
+            Embalagem protegida e com brinde de presilhas.<br>
+            Valeu cada real investido.<br>
+            Já planejo comprar outra cor.<br>
+            Recomendo muito!
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/E6B6C2/fff?text=Elisa" alt="Foto da Elisa">
+          </div>
+        </div>
+        <!-- === Review 6 === -->
+        <div class="review-card">
+          <h3>Fernanda&nbsp;G.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Meu cabelo é fino e sempre sofria para dar volume.<br>
+            Com este aplique, parecia que tinha saído do salão.<br>
+            Ninguém percebeu que não era meu cabelo de verdade.<br>
+            A cor casou direitinho com as minhas luzes.<br>
+            Consegui usar o dia inteiro sem incômodo algum.<br>
+            Adorei que veio com pente fácil para fixar.<br>
+            Mesmo lavando não perdeu a maciez.<br>
+            Chegou embalado com todo cuidado.<br>
+            O suporte respondeu minhas dúvidas na hora.<br>
+            Já quero comprar outra peça para variar.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/FFE5A0/2C2C2C?text=Fernanda" alt="Foto da Fernanda">
+          </div>
+        </div>
+        <!-- === Review 7 === -->
+        <div class="review-card">
+          <h3>Gabriela&nbsp;L.</h3>
+          <div class="rating">★★★★☆</div>
+          <p class="review-description">
+            Gostei da textura, mas achei o comprimento um pouco maior do que esperava.<br>
+            Fora isso, ficou super natural nas fotos.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/D0E8F2/2C2C2C?text=Gabriela" alt="Foto da Gabriela">
+          </div>
+        </div>
+        <!-- === Review 8 === -->
+        <div class="review-card">
+          <h3>Helena&nbsp;D.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Já testei vários apliques e nenhum se encaixou tão bem.<br>
+            A sensação de segurança ao prender é incrível.<br>
+            Passei uma noite inteira dançando e nada saiu do lugar.<br>
+            Não esquenta e não incomoda, mesmo em dias quentes.<br>
+            Recebi elogios de colegas que nem sabiam do aplique.<br>
+            Veio com um manual explicativo super detalhado.<br>
+            As pontas cheias deixam o visual mais sofisticado.<br>
+            Adorei que não fica brilhando demais.<br>
+            Combina com penteados simples ou elaborados.<br>
+            Com certeza vou recomendar para minhas clientes.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/FDEBD0/2C2C2C?text=Helena" alt="Foto da Helena">
+          </div>
+        </div>
+        <!-- === Review 9 === -->
+        <div class="review-card">
+          <h3>Isabela&nbsp;F.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Mal coloquei e já senti a diferença no look.<br>
+            Produto chegou no prazo certinho e bem embalado.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/DAF5DC/2C2C2C?text=Isabela" alt="Foto da Isabela">
+          </div>
+        </div>
+        <!-- === Review 10 === -->
+        <div class="review-card">
+          <h3>Juliana&nbsp;B.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            A qualidade superou minhas expectativas.<br>
+            Consegui pentear facilmente sem embaraçar.<br>
+            Fiz babyliss e o efeito durou a festa inteira.<br>
+            O brilho parece de cabelo natural bem tratado.<br>
+            Meu marido nem notou que era aplique.<br>
+            Veio com presilhas extras que ajudam muito.<br>
+            O atendimento do site foi rápido e educado.<br>
+            Recebi dentro do prazo mesmo morando longe.<br>
+            Guardo no saquinho que veio para conservar.<br>
+            Estou apaixonada pelo resultado final.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F0C0C0/2C2C2C?text=Juliana" alt="Foto da Juliana">
+          </div>
+        </div>
+        <!-- === Review 11 === -->
+        <div class="review-card">
+          <h3>Karen&nbsp;P.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Ótima escolha para dar aquele volume rápido.<br>
+            Meu cabeleireiro aprovou e disse que parece natural.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/FFD1DC/2C2C2C?text=Karen" alt="Foto da Karen">
+          </div>
+        </div>
+        <!-- === Review 12 === -->
+        <div class="review-card">
+          <h3>Larissa&nbsp;H.</h3>
+          <div class="rating">★★★★☆</div>
+          <p class="review-description">
+            A cor ficou perfeita, mas o comprimento veio um pouco desigual.<br>
+            Ainda assim, deu para ajeitar com um corte leve.<br>
+            Achei o encaixe um pouco apertado no começo.<br>
+            Depois de algumas horas ficou confortável.<br>
+            Gostei do brilho, não é artificial.<br>
+            Usei em um casamento e rendeu fotos incríveis.<br>
+            Veio bem embalado e sem cheiro forte.<br>
+            A fixação é melhor que de outras marcas.<br>
+            O preço poderia ser mais em conta.<br>
+            No geral, valeu a pena o investimento.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/FFF8BC/2C2C2C?text=Larissa" alt="Foto da Larissa">
+          </div>
+        </div>
+        <!-- === Review 13 === -->
+        <div class="review-card">
+          <h3>Marina&nbsp;V.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Uso para eventos e sempre me sinto mais confiante.<br>
+            A textura macia faz toda diferença no toque.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/C6DEF1/2C2C2C?text=Marina" alt="Foto da Marina">
+          </div>
+        </div>
+        <!-- === Review 14 === -->
+        <div class="review-card">
+          <h3>Natália&nbsp;N.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Estava receosa, mas assim que chegou me surpreendi.<br>
+            O volume ficou exatamente como eu queria.<br>
+            Prendi em um rabo alto e não escorregou.<br>
+            As amigas ficaram chocadas quando contei que não era meu cabelo.<br>
+            Mesmo depois de lavar continuou brilhoso.<br>
+            Veio com dicas de cuidados bem úteis.<br>
+            Não embaraça fácil, o que é ótimo na correria.<br>
+            Adorei o atendimento via chat da loja.<br>
+            Chegou antes da data prevista, bem embalado.<br>
+            Compraria novamente sem pensar duas vezes.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/E2C2FF/2C2C2C?text=Natalia" alt="Foto da Natália">
+          </div>
+        </div>
+        <!-- === Review 15 === -->
+        <div class="review-card">
+          <h3>Olivia&nbsp;C.</h3>
+          <div class="rating">★★★☆☆</div>
+          <p class="review-description">
+            Achei que o tom não combinou muito bem com meu cabelo.<br>
+            Apesar de macio, o volume ficou aquém do esperado.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F4DADA/2C2C2C?text=Olivia" alt="Foto da Olivia">
+          </div>
+        </div>
+        <!-- === Review 16 === -->
+        <div class="review-card">
+          <h3>Patrícia&nbsp;A.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Nunca tinha usado aplique e fiquei encantada.<br>
+            O encaixe é tão simples que faço sozinha.<br>
+            Passei o dia inteiro sem sentir peso.<br>
+            As mechas se misturam perfeitamente às minhas.<br>
+            Gostei de poder modelar com chapinha.<br>
+            Veio com instruções fáceis de seguir.<br>
+            Chegou no prazo e sem nenhum defeito.<br>
+            Já usei três vezes e continua impecável.<br>
+            O preço é justo pela qualidade oferecida.<br>
+            Recomendo a todas que querem mudar o visual.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/D6E2D9/2C2C2C?text=Patricia" alt="Foto da Patrícia">
+          </div>
+        </div>
+        <!-- === Review 17 === -->
+        <div class="review-card">
+          <h3>Rafaela&nbsp;J.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Usei em uma sessão de fotos e ficou surreal.<br>
+            Nem precisei fazer ajustes, vestiu como uma luva.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F6C6EA/2C2C2C?text=Rafaela" alt="Foto da Rafaela">
+          </div>
+        </div>
+        <!-- === Review 18 === -->
+        <div class="review-card">
+          <h3>Sabrina&nbsp;Q.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Estava em dúvida, mas me surpreendi com o resultado.<br>
+            O aplique ficou invisível mesmo em close na câmera.<br>
+            A textura é macia e não perde o brilho.<br>
+            Consigo prender em coque ou usar solto.<br>
+            A entrega foi rápida, antes do esperado.<br>
+            Vem com uma redinha para guardar, adorei.<br>
+            Minhas amigas sempre pedem indicação.<br>
+            O suporte foi atencioso e tirou minhas dúvidas.<br>
+            Depois de lavar se manteve do mesmo jeito.<br>
+            Vale cada centavo investido.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/C3FBD8/2C2C2C?text=Sabrina" alt="Foto da Sabrina">
+          </div>
+        </div>
+        <!-- === Review 19 === -->
+        <div class="review-card">
+          <h3>Talita&nbsp;E.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Simplesmente perfeito para o meu dia a dia.<br>
+            Parece que acordei com o cabelo arrumado.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/BCE784/2C2C2C?text=Talita" alt="Foto da Talita">
+          </div>
+        </div>
+        <!-- === Review 20 === -->
+        <div class="review-card">
+          <h3>Úrsula&nbsp;O.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Sempre tive pouco cabelo e esse aplique salvou.<br>
+            O encaixe fica firme mesmo com fios finos.<br>
+            Passei várias horas na festa sem incomodar.<br>
+            Adorei o brilho natural, nada artificial.<br>
+            Chegou rápido e bem protegido.<br>
+            Usei com babyliss e segurou bem as ondas.<br>
+            O atendimento pelo Instagram foi ótimo.<br>
+            Combina com meu tom de castanho médio.<br>
+            Minha autoestima está nas alturas.<br>
+            Recomendo para quem busca volume imediato.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/C8E6C9/2C2C2C?text=Ursula" alt="Foto da Úrsula">
+          </div>
+        </div>
+        <!-- === Review 21 === -->
+        <div class="review-card">
+          <h3>Vanessa&nbsp;I.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            A qualidade é excelente e o toque super suave.<br>
+            Compraria novamente sem hesitar.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F7C59F/2C2C2C?text=Vanessa" alt="Foto da Vanessa">
+          </div>
+        </div>
+        <!-- === Review 22 === -->
+        <div class="review-card">
+          <h3>Wanda&nbsp;W.</h3>
+          <div class="rating">★★★★☆</div>
+          <p class="review-description">
+            Gostei do aplique, mas pensei que seria mais volumoso.<br>
+            A textura é boa e não embaraça com facilidade.<br>
+            Depois de algumas horas senti um pouco de peso.<br>
+            Mesmo assim, as fotos ficaram lindas.<br>
+            Veio bem embalado, com manual e acessórios.<br>
+            Adorei poder modelar com chapinha.<br>
+            O atendimento foi cordial durante a compra.<br>
+            Chegou no prazo certinho.<br>
+            Pretendo usar mais vezes em eventos.<br>
+            Só acho que o preço poderia ser menor.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/BAC7BE/2C2C2C?text=Wanda" alt="Foto da Wanda">
+          </div>
+        </div>
+        <!-- === Review 23 === -->
+        <div class="review-card">
+          <h3>Xênia&nbsp;U.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Ideal para dar volume rápido em penteados simples.<br>
+            Recebi elogios até de desconhecidos.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/E0BBE4/2C2C2C?text=Xenia" alt="Foto da Xênia">
+          </div>
+        </div>
+        <!-- === Review 24 === -->
+        <div class="review-card">
+          <h3>Yara&nbsp;Z.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Já usei outros, mas esse me conquistou de vez.<br>
+            É leve, não pinica e parece cabelo de verdade.<br>
+            Consegui tonalizar para combinar com minhas mechas.<br>
+            O brilho fica bonito até em ambientes fechados.<br>
+            Passei o dia todo com ele sem nenhum desconforto.<br>
+            A embalagem veio impecável, com cheirinho bom.<br>
+            Gosto de como prende firme na raiz.<br>
+            Facilitou muito para fotos de trabalho.<br>
+            Já indiquei para várias amigas do salão.<br>
+            Estou pensando em comprar mais cores.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/D7E5D4/2C2C2C?text=Yara" alt="Foto da Yara">
+          </div>
+        </div>
+        <!-- === Review 25 === -->
+        <div class="review-card">
+          <h3>Zilda&nbsp;Y.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Cumpre tudo o que promete.<br>
+            Me sinto outra pessoa quando uso.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/FFC9DE/2C2C2C?text=Zilda" alt="Foto da Zilda">
+          </div>
+        </div>
+        <!-- === Review 26 === -->
+        <div class="review-card">
+          <h3>Carolina&nbsp;M.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            A melhor compra que fiz para eventos.<br>
+            Prende bem e não esquenta.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/FFE1A8/2C2C2C?text=Carolina" alt="Foto da Carolina">
+          </div>
+        </div>
+        <!-- === Review 27 === -->
+        <div class="review-card">
+          <h3>Bruna&nbsp;R.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Perfeito para mudar o visual sem esforço.<br>
+            Recebo elogios toda vez que uso.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F4A7B9/2C2C2C?text=Bruna" alt="Foto da Bruna">
+          </div>
+        </div>
+        <!-- === Review 28 === -->
+        <div class="review-card">
+          <h3>Cíntia&nbsp;L.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Qualidade incrível e entrega super rápida.<br>
+            Estou apaixonada pelo resultado.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/F6E3B4/2C2C2C?text=Cintia" alt="Foto da Cíntia">
+          </div>
+        </div>
+        <!-- === Review 29 === -->
+        <div class="review-card">
+          <h3>Débora&nbsp;S.</h3>
+          <div class="rating">★★★★☆</div>
+          <p class="review-description">
+            O acabamento é bom, mas esperava mais volume.<br>
+            Ainda assim, ficou bonito nas fotos.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/EAEAEA/2C2C2C?text=Debora" alt="Foto da Débora">
+          </div>
+        </div>
+        <!-- === Review 30 === -->
+        <div class="review-card">
+          <h3>Estela&nbsp;T.</h3>
+          <div class="rating">★★★★★</div>
+          <p class="review-description">
+            Superou minhas expectativas em todos os detalhes.<br>
+            Já quero experimentar outros modelos.
+          </p>
+          <div class="review-image-container">
+            <img src="https://placehold.co/1200x900/E4C1F9/2C2C2C?text=Estela" alt="Foto da Estela">
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="carousel-btn prev-btn">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M15 19.5L7.5 12L15 4.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="carousel-btn next-btn">
+      <svg viewBox="0 0 24 24" fill="none"><path d="M9 4.5L16.5 12L9 19.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- ========= MODAL ========= -->
+<div class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-image-container"><img src="" alt="Foto do review"></div>
+    <div class="modal-review-info"></div>
+    <button class="modal-close">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M18 6L6 18" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M6 6L18 18" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+const track   = document.querySelector('.review-carousel-track');
+const viewport= document.querySelector('.review-carousel-viewport');
+const slides  = [...track.children];
+const nextBtn = document.querySelector('.next-btn');
+const prevBtn = document.querySelector('.prev-btn');
+const modal   = document.querySelector('.modal-overlay');
+const mImg    = modal.querySelector('.modal-image-container img');
+const mInfo   = modal.querySelector('.modal-review-info');
+const mClose  = modal.querySelector('.modal-close');
+let photosGlobal=[], currentModal=0;
+let idx=0, slidesPerView=1, auto;
+
+function move(i,anim=true){
+  const max=slides.length-slidesPerView;
+  idx=Math.max(0,Math.min(i,max));
+  track.style.transition=anim?'transform .4s ease':'none';
+  const slideWidth = viewport.clientWidth / slidesPerView;
+  track.style.transform=`translateX(${-slideWidth * idx}px)`;
+  clearInterval(auto);
+  auto = setInterval(()=>move(idx >= max ? 0 : idx+1), 5000);
+}
+
+function updateSizes(){
+  slidesPerView=+getComputedStyle(document.documentElement).getPropertyValue('--slides')||1;
+  const cardWidth=(viewport.clientWidth / slidesPerView) - 20;
+  slides.forEach(s=>s.style.width = cardWidth + 'px');
+  move(idx,false);
+}
+
+// Função: Se o texto está cortado, adiciona o botão "Leia mais"
+function setupLeiaMais(){
+  slides.forEach((slide,index)=>{
+    const desc = slide.querySelector('.review-description');
+    if(!desc) return;
+    // Remove botão antigo, se houver (para reuso)
+    let lm = desc.querySelector('.leia-mais');
+    if(lm) lm.remove();
+
+    // Clona o texto para medir altura real sem corte
+    const clone = desc.cloneNode(true);
+    clone.style.position = 'absolute';
+    clone.style.visibility = 'hidden';
+    clone.style.height = 'auto';
+    clone.style.display = 'block';
+    clone.style.webkitLineClamp = 'unset';
+    clone.style.overflow = 'visible';
+    clone.style.minHeight = 'unset';
+    clone.style.maxHeight = 'none';
+    document.body.appendChild(clone);
+
+    const isOverflow = clone.offsetHeight > desc.offsetHeight + 2;
+    clone.remove();
+
+    if(isOverflow){
+      const btn = document.createElement('button');
+      btn.className = 'leia-mais';
+      btn.type = 'button';
+      btn.textContent = 'Leia mais';
+      btn.onclick = (e) => { e.stopPropagation(); openModal(index); };
+      desc.appendChild(btn);
+    }
+  });
+}
+
+function openModal(i){
+  currentModal=i;
+  updateModal();
+  document.body.classList.add('modal-open');
+  clearInterval(auto);
+}
+const closeModal=()=>{document.body.classList.remove('modal-open');move(idx);} 
+function updateModal(){
+  const p=photosGlobal[currentModal];
+  if(!p)return;
+  mImg.src=p.src;mImg.alt=p.alt;mInfo.innerHTML=p.html;
+}
+
+let isDown=false,startX,scrollLeft,walk=0;
+viewport.addEventListener('mousedown',e=>{
+  isDown=true;viewport.classList.add('grabbing');
+  startX=e.pageX - viewport.offsetLeft;
+  scrollLeft = -idx * (viewport.clientWidth / slidesPerView);
+  track.style.transition='none';
+});
+viewport.addEventListener('mouseleave',()=>{isDown=false;viewport.classList.remove('grabbing');if(walk) snap();});
+viewport.addEventListener('mouseup',()=>{isDown=false;viewport.classList.remove('grabbing');snap();});
+viewport.addEventListener('mousemove',e=>{
+  if(!isDown) return;
+  e.preventDefault();
+  const x=e.pageX - viewport.offsetLeft;
+  walk = (x - startX);
+  track.style.transform=`translateX(${scrollLeft + walk}px)`;
+});
+function snap(){
+  const slideWidth = viewport.clientWidth / slidesPerView;
+  const thr = slideWidth * 0.25;
+  if(walk > thr) move(idx-1); else if(walk < -thr) move(idx+1); else move(idx);
+  walk=0;
+}
+
+function init(){
+  slides.forEach((slide,index)=>{
+    const img = slide.querySelector('.review-image-container img');
+    if(img){
+      const name=slide.querySelector('h3')?.outerHTML||'';
+      const star=slide.querySelector('.rating')?.outerHTML||'';
+      const descHtml=slide.querySelector('.review-description')?.innerHTML.replace(/<button.*?leia-mais.*?<\/button>/g,'')||'';
+      const descWrap = `<p class="review-description">${descHtml}</p>`;
+      photosGlobal.push({src:img.src,alt:img.alt,html:name+star+descWrap});
+      img.closest('.review-image-container').addEventListener('click',()=>openModal(index));
+    }
+  });
+  updateSizes();
+  setupLeiaMais();
+  nextBtn.onclick=()=>move(idx+1);
+  prevBtn.onclick=()=>move(idx-1);
+  window.onresize=()=>{updateSizes();setupLeiaMais();};
+  mClose.onclick=closeModal;
+  modal.addEventListener('click',e=>{if(e.target===modal) closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('modal-open')) closeModal();});
+}
+init();
+});
+</script>
+</body>
+</html>
