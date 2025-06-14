@@ -690,6 +690,7 @@ function setupLeiaMais(){
     link.textContent = 'Leia mais';
     link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openModal(index); };
     desc.appendChild(link);
+    desc.onclick = () => openModal(index);
   });
 }
 
