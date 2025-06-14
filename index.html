@@ -760,8 +760,16 @@ function init(){
   });
   updateSizes();
   setupLeiaMais();
-  nextBtn.onclick=()=>move(idx+1);
-  prevBtn.onclick=()=>move(idx-1);
+  function goNext(){
+    const max = slides.length - slidesPerView;
+    move(idx >= max ? 0 : idx + 1);
+  }
+  function goPrev(){
+    const max = slides.length - slidesPerView;
+    move(idx <= 0 ? max : idx - 1);
+  }
+  nextBtn.onclick = goNext;
+  prevBtn.onclick = goPrev;
   window.onresize=()=>{updateSizes();setupLeiaMais();};
   mClose.onclick=closeModal;
   modal.addEventListener('click',e=>{if(e.target===modal) closeModal();});
