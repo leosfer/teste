@@ -55,7 +55,7 @@ body.modal-open{overflow:hidden}
     min-height:4.8em;
 }
 
-/* "Leia mais" estilizado como botão de texto */
+/* "Leia mais" estilizado como link */
 .leia-mais{
     display:inline-block;
     color:var(--rosa);
@@ -675,38 +675,21 @@ function updateSizes(){
   move(idx,false);
 }
 
-// Função: Se o texto está cortado, adiciona o botão "Leia mais"
+// Função: adiciona o link "Leia mais" ao final de cada descrição
 function setupLeiaMais(){
   slides.forEach((slide,index)=>{
     const desc = slide.querySelector('.review-description');
     if(!desc) return;
-    // Remove botão antigo, se houver (para reuso)
+    // Remove link antigo, se houver (para reuso)
     let lm = desc.querySelector('.leia-mais');
     if(lm) lm.remove();
 
-    // Clona o texto para medir altura real sem corte
-    const clone = desc.cloneNode(true);
-    clone.style.position = 'absolute';
-    clone.style.visibility = 'hidden';
-    clone.style.height = 'auto';
-    clone.style.display = 'block';
-    clone.style.webkitLineClamp = 'unset';
-    clone.style.overflow = 'visible';
-    clone.style.minHeight = 'unset';
-    clone.style.maxHeight = 'none';
-    document.body.appendChild(clone);
-
-    const isOverflow = clone.offsetHeight > desc.offsetHeight + 2;
-    clone.remove();
-
-    if(isOverflow){
-      const btn = document.createElement('button');
-      btn.className = 'leia-mais';
-      btn.type = 'button';
-      btn.textContent = 'Leia mais';
-      btn.onclick = (e) => { e.stopPropagation(); openModal(index); };
-      desc.appendChild(btn);
-    }
+    const link = document.createElement('a');
+    link.href = '#';
+    link.className = 'leia-mais';
+    link.textContent = 'Leia mais';
+    link.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openModal(index); };
+    desc.appendChild(link);
   });
 }
 
